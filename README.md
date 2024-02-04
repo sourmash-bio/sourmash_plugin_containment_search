@@ -85,8 +85,12 @@ Each row contains the following information.
 * `average_abund` - average abundance of weights intersecting hashes.
 * `median_abund` - median abundance of weights from intersecting hashes.
 * `std_abund` - std dev of weights from intersecting hashes.
-* `total_weighted_hashes` - total number of weighted hashes in metagenome.
-* `jaccard` - (unweighted) Jaccard similarity between sketches. @CTB
+* `jaccard` - (unweighted) Jaccard similarity between sketches.
+* `genome_containment_ani` - ANI estimated from the genome containment in the metagenome. Use this for genome ANI estimates.
+* `match_containment_ani` - ANI estimated from the metagenome containment in the genome.
+* `average_containment_ani` - ANI estimated from the average of the genome and metagenome containments.
+* `max_containment_ani` - ANI estimated from the max containment between genome/metagenome.
+* `potential_false_negative` - True if the sketch size(s) were too small to give a reliable ANI estimate. False if ANI estimate is reliable.
 
 ### Sketch information
 
@@ -99,12 +103,15 @@ Each row contains the following information.
 * `query_filename` - genome filename from sketch.
 * `query_name` - genome name.
 * `query_md5` - genome md5.
+* `query_n_hashes` - total numbef of hashes in the genome.
 
 ### Match (metagenome) information:
 
 * `match_filename` - metagenome filename from sketch.
 * `match_name` - metagenome name.
 * `match_md5` - metagenome md5.
+* `match_n_hashes` - total number of hashes in the metagenome.
+* `match_n_weighted_hashes` - total number of weighted hashes in metagenome.
 
 ## TODO
 
