@@ -1,54 +1,91 @@
-# sourmash_plugin_xyz: a template for sourmash plugins
+# sourmash_plugin_containment_search: improved containment search for genomes in metagenomes
 
-This is a good place to start if you're writing a plugin for
-[sourmash (sourmash-bio/sourmash/)](https://github.com/sourmash-bio/sourmash/).
-
-Note: plugins are not yet available in a released version of sourmash.
-
-## Instructions
-
-You can use this repo as a template repo to create a new plugin!
-
-See [this set of changes](https://github.com/ctb/sourmash_plugin_template_test1/pull/1) for the minimal diff needed to get a plugin working!
-
-### Building from a template:
-
-First, go to [the GitHub page](https://github.com/sourmash-bio/sourmash_plugin_template) and click "Use this template" to create a new repository.
-
-Clone that repository into your development space.
-
-Then, search for all places where 'xyz' is present, and replace
-'xyz' with the name of your plugin.
-
-Next, edit the code in `src/sourmash_plugin_xyz.py` to implement the plugin
-(you'll probably want to change the name of that file, too.)
-
-Then run `pip install .` to install and test your plugin! You can also
-run `pip install -e .` to install it in editable mode, which is more
-convenient for development.
-
-## Examples
-
-[sourmash_plugin_avro](https://github.com/sourmash-bio/sourmash_plugin_avro)
-and
-[sourmash_plugin_load_urls](https://github.com/sourmash-bio/sourmash_plugin_load_urls)
-are two examples you can follow.
-
-## Template docs for new plugin built from this template.
-
-Delete everything from this line on up and put in your new README ;).
-
-# sourmash_plugin_xyz
+This plugin adds a command `sourmash scripts mgsearch` that provides
+new & nicer output for searching genomes against metagenomes.
 
 ## Installation
 
 ```
-pip install sourmash_plugin_xyz
+pip install sourmash_plugin_containment_search
 ```
 
 ## Usage
 
-non-xyz info goes here!
+This command:
+```
+sourmash scripts mgsearch query.sig metagenome.sig [ metagenome2.sig ...] \
+    [ -o output.csv ]
+```
+will search for the query genome `query.sig` in one or more
+`metagenome.sig` files, producing decent human-readable output and
+(optionally) useful CSV outputs.
+
+For example,
+```
+sourmash scripts mgsearch ../sourmash/podar-ref/0.fa.sig ../sourmash/SRR606249.trim.k31.sig.gz
+```
+
+produces:
+```
+Loaded query signature: CP001472.1 Acidobacterium capsulatum ATCC 51196, com...
+
+p_genome avg_abund   p_metag   metagenome name
+-------- ---------   -------   ---------------
+ 100.0%    55.4         3.1%   SRR606249
+```
+
+## Backstory: Why this command?
+
+`sourmash search` supports sample search x sample search, broadly -
+perhaps too
+broadly. [And the output formats aren't that helpful.](https://github.com/sourmash-bio/sourmash/issues/2002)
+
+`sourmash prefetch` supports metagenome overlap search against many genomes,
+which is the reverse of this use case. Moreover, [prefetch doesn't provided weighted results](https://github.com/sourmash-bio/sourmash/issues/1828) and its output isn't frendly.
+
+`sourmash gather` has friendly and useful output, but calculates something
+different from overlap.
+
+There is also some interest in [reverse containment search](https://github.com/sourmash-bio/sourmash/issues/1198).
+
+The `manysearch` command of
+[the sourmash branchwater plugin](https://github.com/sourmash-bio/sourmash_plugin_branchwater/blob/main/doc/README.md#running-manysearch)
+also does a nice containment search like this plugin, but it doesn't
+provide nice human-readable output and it also doesn't provide
+weighted results.
+
+## Advanced info: other implementation details
+
+This command is streaming, in the sense that it will load each metagenome,
+calculate the match, and then discard the metagenome.
+
+## CSV output
+
+Each row contains:
+
+* `intersect_bp` - overlap between genome and metagenome.
+* `match_filename` - metagenome filename from sketch.
+* `match_name` - metagenome name.
+* `match_md5` - metagenome md5.
+* `query_filename` - genome filename from sketch.
+* `query_name` - genome name.
+* `query_md5` - genome md5.
+* `ksize` - ksize of comparison.
+* `moltype` - moltype of comparison.
+* `scaled` - scaled of comparison.
+* `f_query` - fraction of query (genome) found. "Detection"; roughly matches the number of bases that will be covered by mapped metagenome reads.
+* `f_match` - fraction of metagenome found, unweighted.
+* `f_match_weighted` - fraction of metagenome found, weighted. Roughly matches the fraction of metagenome reads that will map to this genome.
+* `sum_weighted_found` - sum of weights from intersectiong hashes.
+* `average_abund` - average abundance of weights intersecting hashes.
+* `median_abund` - median abundance of weights from intersecting hashes.
+* `std_abund` - std dev of weights from intersecting hashes.
+* `total_weighted_hashes` - total number of weighted hashes in metagenome.
+
+## TODO
+
+* write tests
+* evaluate whether we should add more columns by looking at prefetch and gather output
 
 ## Support
 
@@ -56,7 +93,7 @@ We suggest filing issues in [the main sourmash issue tracker](https://github.com
 
 ## Dev docs
 
-`xyz` is developed at https://github.com/sourmash-bio/sourmash_plugin_template.
+`containment_search` is developed at https://github.com/ctb/sourmash_plugin_containment_search.
 
 ### Generating a release
 
