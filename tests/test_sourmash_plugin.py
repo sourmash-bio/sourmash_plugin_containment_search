@@ -84,6 +84,7 @@ def test_0_x_podar_out(runtmp):
 
     row_keys = set(row.keys())
     col_keys = set(columns)
+    assert row_keys == col_keys
 
     assert round(float(row['f_match']), 3) == 0.010
     assert round(float(row['f_match_weighted']), 3) == 0.031
@@ -98,9 +99,6 @@ def test_0_x_podar_out(runtmp):
     assert int(row['match_n_hashes']) == 4200 # @CTB?
     assert int(row['query_n_hashes']) == 42
 
-    assert row_keys == col_keys
-    #assert 0
-    
 
 def test_1_x_podar(runtmp):
     query = utils.get_test_data('1.sig.zip')
@@ -131,4 +129,19 @@ def test_1_x_0_no_abund(runtmp):
     query = utils.get_test_data('1.sig.zip')
     against = utils.get_test_data('0.sig.zip')
 
-    runtmp.sourmash('scripts', 'mgsearch', query, against)
+    runtmp.sourmash('scripts', 'mgsearch', query, against, '-o', 'out.csv')
+    csvfp = open(runtmp.output('out.csv'), newline='')
+    rows = list(csv.DictReader(csvfp))
+    row = rows[0]
+    pprint(row)
+
+    assert round(float(row['f_match']), 3) == 0.0
+    assert not row['f_match_weighted']
+    assert not row['median_abund']
+    assert not row['average_abund']
+    assert not row['std_abund']
+    assert not row['sum_weighted_found']
+    assert not row['match_n_weighted_hashes']
+    assert int(row['intersect_bp']) == 0
+    assert int(row['match_n_hashes']) == 42
+    assert int(row['query_n_hashes']) == 6 # @CTB
