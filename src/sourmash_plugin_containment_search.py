@@ -23,6 +23,7 @@ import shutil
 import csv
 
 from sourmash import sourmash_args
+from sourmash.search import PrefetchResult
 from sourmash.cli.utils import (add_ksize_arg, add_moltype_args,
                                 add_scaled_arg)
 from sourmash.plugins import CommandLinePlugin
@@ -88,6 +89,7 @@ def mgsearch(query_filename, against_list, *,
     query_mh = query_ss.minhash
     if scaled:
         query_mh = query_mh.downsample(scaled=scaled)
+        query_ss.minhash = query_mh
 
     columns = ['intersect_bp',
                'match_filename',
@@ -106,7 +108,15 @@ def mgsearch(query_filename, against_list, *,
                'average_abund',
                'median_abund',
                'std_abund',
-               'total_weighted_hashes',
+               'query_n_hashes',
+               'match_n_hashes',
+               'match_n_weighted_hashes',
+               'jaccard',
+               'genome_containment_ani',
+               'match_containment_ani',
+               'average_containment_ani',
+               'max_containment_ani',
+               'potential_false_negative'
                ]
 
     if output:
@@ -130,7 +140,10 @@ def mgsearch(query_filename, against_list, *,
         metag = metag[0]
 
         # make sure metag has abundance!
-        assert metag.minhash.track_abundance, filename
+        assert metag.minhash.track_abundance, f"'{metag_filename}' must have abundance information"
+
+        result = PrefetchResult(query_ss, metag, threshold_bp=0,
+                                 estimate_ani_ci=False)
 
         # calculate total weighted hashes for use in denominator:
         total_sum_abunds = metag.minhash.sum_abundances
@@ -164,18 +177,28 @@ def mgsearch(query_filename, against_list, *,
             overlap_sum_abunds = 0
             f_sum_abunds = 0
 
-        results_d = dict(intersect_bp=len(intersect_mh),
+        results_d = dict(intersect_bp=result.intersect_bp,
                          query_filename=query_ss.filename,
                          query_name=query_ss.name,
                          query_md5=query_ss.md5sum(),
-                         f_query=query_mh.contained_by(intersect_mh),
-                         f_match=flat_metag.contained_by(intersect_mh),
+                         f_query=result.f_match_query,
+                         f_match=result.f_query_match,
                          f_match_weighted=f_sum_abunds,
                          sum_weighted_found=overlap_sum_abunds,
-                         total_weighted_hashes=total_sum_abunds,
+                         query_n_hashes=len(query_mh),
+                         match_n_hashes=len(flat_metag),
+                         match_n_weighted_hashes=total_sum_abunds,
                          average_abund=mean,
                          median_abund=median,
-                         std_abund=std)
+                         std_abund=std,
+                         jaccard=result.jaccard,
+                         genome_containment_ani=result.query_containment_ani,
+                         match_containment_ani=result.match_containment_ani,
+                         average_containment_ani=result.average_containment_ani,
+                         max_containment_ani=result.max_containment_ani,
+                         potential_false_negative=result.potential_false_negative,
+                         )
+
         results_d.update(results_template)
 
         if out_w:
@@ -202,4 +225,3 @@ def mgsearch(query_filename, against_list, *,
 
     if out_fp:
         out_fp.close()
-
