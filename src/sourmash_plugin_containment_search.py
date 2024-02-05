@@ -89,6 +89,7 @@ def mgsearch(query_filename, against_list, *,
     query_mh = query_ss.minhash
     if scaled:
         query_mh = query_mh.downsample(scaled=scaled)
+        query_ss = query_ss.to_mutable()
         query_ss.minhash = query_mh
 
     columns = ['intersect_bp',
