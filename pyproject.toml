@@ -12,3 +12,4 @@ license = { text = "BSD 3-Clause License" }
 
 [project.entry-points."sourmash.cli_script"]
 containment_search_command = "sourmash_plugin_containment_search:Command_ContainmentSearch"
+containment_multisearch_command = "sourmash_plugin_containment_search:Command_ContainmentMultiSearch"
