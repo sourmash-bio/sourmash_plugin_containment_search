@@ -110,3 +110,25 @@ def test_1_x_podar(runtmp):
     out = runtmp.last_result.out
     print(out)
     assert " 100.0%    45.5         0.4%   SRR606249" in out
+
+
+def test_1_x_0_require_abundance(runtmp):
+    # require abundance!
+    query = utils.get_test_data('1.sig.zip')
+    against = utils.get_test_data('0.sig.zip')
+
+    with pytest.raises(SourmashCommandFailed):
+        runtmp.sourmash('scripts', 'mgsearch', query, against,
+                        '--require-abundance', fail_ok=True)
+    
+    err = runtmp.last_result.err
+    print(err)
+    assert "must have abundance information" in err
+
+
+def test_1_x_0_no_abund(runtmp):
+    # do not require abundance
+    query = utils.get_test_data('1.sig.zip')
+    against = utils.get_test_data('0.sig.zip')
+
+    runtmp.sourmash('scripts', 'mgsearch', query, against)

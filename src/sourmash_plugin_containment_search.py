@@ -56,6 +56,8 @@ class Command_ContainmentSearch(CommandLinePlugin):
                                help='metagenomes to search')
         subparser.add_argument('-o', '--output', default=None,
                                help='output CSV')
+        subparser.add_argument('--require-abundance', action="store_true",
+                               help='require that metagenomes be sketched with abundance')
 
         add_ksize_arg(subparser, default=31)
         add_moltype_args(subparser)
@@ -69,11 +71,13 @@ class Command_ContainmentSearch(CommandLinePlugin):
                         ksize=args.ksize,
                         moltype=moltype,
                         scaled=args.scaled,
-                        output=args.output)
+                        output=args.output,
+                        require_abundance=args.require_abundance)
 
 
 def mgsearch(query_filename, against_list, *,
-             ksize=31, moltype='DNA', scaled=1000, output=None):
+             ksize=31, moltype='DNA', scaled=1000, output=None,
+             require_abundance=False):
     screen_width = _get_screen_width()
 
     query_ss = sourmash.load_file_as_index(query_filename)
@@ -141,7 +145,13 @@ def mgsearch(query_filename, against_list, *,
         metag = metag[0]
 
         # make sure metag has abundance!
-        assert metag.minhash.track_abundance, f"'{metag_filename}' must have abundance information"
+        if require_abundance:
+            if not metag.minhash.track_abundance:
+                raise ValueError(f"'{metag_filename}' must have abundance information")
+
+        has_abundance = False
+        if metag.minhash.track_abundance:
+            has_abundance = True
 
         result = PrefetchResult(query_ss, metag, threshold_bp=0,
                                  estimate_ani_ci=False)
@@ -153,7 +163,6 @@ def mgsearch(query_filename, against_list, *,
         flat_metag = metag.minhash.flatten()
 
         # other info!
-
         results_template = dict(match_md5=metag.md5sum(),
                                 match_name=metag.name,
                                 match_filename=metag_filename,
@@ -161,13 +170,12 @@ def mgsearch(query_filename, against_list, *,
                                 moltype=metag.minhash.moltype,
                                 scaled=metag.minhash.scaled)
 
-        # now, get weighted containment for query genome
-        intersect_mh = query_mh.intersection(flat_metag)
-        w_intersect_mh = intersect_mh.inflate(metag.minhash)
+        if has_abundance:
+            # now, get weighted containment for query genome
+            intersect_mh = query_mh.intersection(flat_metag)
+            w_intersect_mh = intersect_mh.inflate(metag.minhash)
 
-        abunds = list(w_intersect_mh.hashes.values())
-
-        if abunds:
+            abunds = list(w_intersect_mh.hashes.values())
             mean = np.mean(abunds)
             median = np.median(abunds)
             std = np.std(abunds)
