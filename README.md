@@ -1,7 +1,7 @@
 # sourmash_plugin_containment_search: improved containment search for genomes in metagenomes
 
-This plugin adds a command `sourmash scripts mgsearch` that provides
-new & nicer output for searching genomes against metagenomes.
+This plugin provides a command `sourmash scripts mgsearch` that
+provides new & nicer output for searching genomes against metagenomes.
 
 ## Installation
 
@@ -34,53 +34,84 @@ p_genome avg_abund   p_metag   metagenome name
  100.0%    55.4         3.1%   SRR606249
 ```
 
+This plugin will work with all the standard sourmash database types, too.
+
+Note that the metagenomes _must_ have been sketched with `-p abund`.
+
 ## Backstory: Why this command?
 
 `sourmash search` supports sample search x sample search, broadly -
 perhaps too
 broadly. [And the output formats aren't that helpful.](https://github.com/sourmash-bio/sourmash/issues/2002)
 
-`sourmash prefetch` supports metagenome overlap search against many genomes,
-which is the reverse of this use case. Moreover, [prefetch doesn't provided weighted results](https://github.com/sourmash-bio/sourmash/issues/1828) and its output isn't frendly.
+`sourmash prefetch` supports metagenome overlap search against many
+genomes, which is the reverse of this use case. Moreover,
+[prefetch doesn't provided weighted results](https://github.com/sourmash-bio/sourmash/issues/1828)
+and its output isn't friendly.
 
-`sourmash gather` has friendly and useful output, but calculates something
-different from overlap.
+`sourmash gather` has friendly and useful output, but can't be used to
+calculate the overlap between a single query genome and many subject
+metagenomes.
 
-There is also some interest in [reverse containment search](https://github.com/sourmash-bio/sourmash/issues/1198).
+There is also some interest in
+[reverse containment search](https://github.com/sourmash-bio/sourmash/issues/1198).
 
 The `manysearch` command of
 [the sourmash branchwater plugin](https://github.com/sourmash-bio/sourmash_plugin_branchwater/blob/main/doc/README.md#running-manysearch)
 also does a nice containment search like this plugin, but it doesn't
 provide nice human-readable output and it also doesn't provide
-weighted results.
+weighted results. (`manysearch` is, however, much lower memory &
+probably a fair bit faster because it's mostly in Rust.)
 
-## Advanced info: other implementation details
+## Advanced info: implementation details
 
-This command is streaming, in the sense that it will load each metagenome,
-calculate the match, and then discard the metagenome.
+This command is streaming, in the sense that it will load each
+metagenome, calculate the match, and then discard the metagenome.
+Hence its memory usage peaks with the largest metagenome, and its max
+should be driven by the size of the query + the size of the largest
+metagenome.
 
 ## CSV output
 
-Each row contains:
+Each row contains the following information.
 
-* `intersect_bp` - overlap between genome and metagenome.
-* `match_filename` - metagenome filename from sketch.
-* `match_name` - metagenome name.
-* `match_md5` - metagenome md5.
-* `query_filename` - genome filename from sketch.
-* `query_name` - genome name.
-* `query_md5` - genome md5.
-* `ksize` - ksize of comparison.
-* `moltype` - moltype of comparison.
-* `scaled` - scaled of comparison.
-* `f_query` - fraction of query (genome) found. "Detection"; roughly matches the number of bases that will be covered by mapped metagenome reads.
+### Comparison details
+
+* `intersect_bp` - overlap between genome and metagenome, estimated by multiplying the number of hashes by the scaled factor used.
+* `f_query` - fraction of query (genome) found, aka "detection"; roughly matches the number of bases that will be covered by mapped metagenome reads.
 * `f_match` - fraction of metagenome found, unweighted.
 * `f_match_weighted` - fraction of metagenome found, weighted. Roughly matches the fraction of metagenome reads that will map to this genome.
-* `sum_weighted_found` - sum of weights from intersectiong hashes.
+* `sum_weighted_found` - sum of weights from intersecting hashes.
 * `average_abund` - average abundance of weights intersecting hashes.
 * `median_abund` - median abundance of weights from intersecting hashes.
 * `std_abund` - std dev of weights from intersecting hashes.
-* `total_weighted_hashes` - total number of weighted hashes in metagenome.
+* `jaccard` - (unweighted) Jaccard similarity between sketches.
+* `genome_containment_ani` - ANI estimated from the genome containment in the metagenome. Use this for genome ANI estimates.
+* `match_containment_ani` - ANI estimated from the metagenome containment in the genome.
+* `average_containment_ani` - ANI estimated from the average of the genome and metagenome containments.
+* `max_containment_ani` - ANI estimated from the max containment between genome/metagenome.
+* `potential_false_negative` - True if the sketch size(s) were too small to give a reliable ANI estimate. False if ANI estimate is reliable.
+
+### Sketch information
+
+* `ksize` - ksize of comparison.
+* `moltype` - moltype of comparison.
+* `scaled` - scaled of comparison.
+
+### Query (genome) information:
+
+* `query_filename` - genome filename from sketch.
+* `query_name` - genome name.
+* `query_md5` - genome md5.
+* `query_n_hashes` - total numbef of hashes in the genome.
+
+### Match (metagenome) information:
+
+* `match_filename` - metagenome filename from sketch.
+* `match_name` - metagenome name.
+* `match_md5` - metagenome md5.
+* `match_n_hashes` - total number of hashes in the metagenome.
+* `match_n_weighted_hashes` - total number of weighted hashes in metagenome.
 
 ## TODO
 
