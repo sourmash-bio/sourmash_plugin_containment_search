@@ -136,12 +136,13 @@ def test_1_x_0_no_abund(runtmp):
     pprint(row)
 
     assert round(float(row['f_match']), 3) == 0.0
+    assert int(row['intersect_bp']) == 0
+    assert int(row['match_n_hashes']) == 42
+    assert int(row['query_n_hashes']) == 6 # @CTB
+
     assert not row['f_match_weighted']
     assert not row['median_abund']
     assert not row['average_abund']
     assert not row['std_abund']
     assert not row['sum_weighted_found']
     assert not row['match_n_weighted_hashes']
-    assert int(row['intersect_bp']) == 0
-    assert int(row['match_n_hashes']) == 42
-    assert int(row['query_n_hashes']) == 6 # @CTB
