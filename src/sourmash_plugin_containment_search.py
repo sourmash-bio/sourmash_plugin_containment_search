@@ -136,6 +136,9 @@ def mgsearch(query_filename, against_list, *,
 
     # display stuff
     first = True
+
+    # missing abundances?
+    missed_abundance = False
     
     for metag_filename in against_list:
         metag = sourmash.load_file_as_signatures(metag_filename,
@@ -152,6 +155,8 @@ def mgsearch(query_filename, against_list, *,
         has_abundance = False
         if metag.minhash.track_abundance:
             has_abundance = True
+        else:
+            missed_abundance = True
 
         result = PrefetchResult(query_ss, metag, threshold_bp=0,
                                  estimate_ani_ci=False)
@@ -182,9 +187,9 @@ def mgsearch(query_filename, against_list, *,
             overlap_sum_abunds = w_intersect_mh.sum_abundances
             f_sum_abunds = overlap_sum_abunds / total_sum_abunds
         else:
-            mean = median = std = 0
-            overlap_sum_abunds = 0
-            f_sum_abunds = 0
+            mean = median = std = ""
+            overlap_sum_abunds = ""
+            f_sum_abunds = ""
 
         results_d = dict(intersect_bp=result.intersect_bp,
                          query_filename=query_ss.filename,
@@ -224,13 +229,22 @@ def mgsearch(query_filename, against_list, *,
         f_genome_found = results_d['f_query']
         pct_genome = f"{f_genome_found*100:.1f}"
 
-        f_metag_weighted = results_d['f_match_weighted']
-        pct_metag = f"{f_metag_weighted*100:.1f}"
 
-        avg_abund = results_d['average_abund']
-        avg_abund = f"{avg_abund:.1f}"
+        if has_abundance:
+            f_metag_weighted = results_d['f_match_weighted']
+            pct_metag = f"{f_metag_weighted*100:.1f}%"
 
-        print(f'{pct_genome:>6}%  {avg_abund:>6}     {pct_metag:>7}%   {name}')
+            avg_abund = results_d['average_abund']
+            avg_abund = f"{avg_abund:.1f}"
+        else:
+            avg_abund = "N/A"
+            pct_metag = "N/A"
+
+        print(f'{pct_genome:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
 
     if out_fp:
         out_fp.close()
+
+    if missed_abundance:
+        notify("")
+        notify("** Note: N/A in column values indicate metagenomes w/o abundance tracking.")

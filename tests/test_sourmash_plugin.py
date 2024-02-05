@@ -38,7 +38,7 @@ def test_0_x_podar(runtmp):
     runtmp.sourmash('scripts', 'mgsearch', query, against)
     
     out = runtmp.last_result.out
-    assert " 100.0%    54.2         3.1%   SRR606249" in out
+    assert "100.0%    54.2       3.1%     SRR606249" in out
 
 
 def test_0_x_podar_out(runtmp):
@@ -109,7 +109,7 @@ def test_1_x_podar(runtmp):
     
     out = runtmp.last_result.out
     print(out)
-    assert " 100.0%    45.5         0.4%   SRR606249" in out
+    assert "100.0%    45.5       0.4%     SRR606249" in out
 
 
 def test_1_x_0_require_abundance(runtmp):
