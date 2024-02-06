@@ -67,6 +67,8 @@ class Command_ContainmentSearch(CommandLinePlugin):
         super().main(args)
 
         moltype = sourmash_args.calculate_moltype(args)
+        if moltype is None: moltype = 'DNA'
+
         return mgsearch(args.query_genome, args.metagenomes,
                         ksize=args.ksize,
                         moltype=moltype,
@@ -105,6 +107,8 @@ class Command_ContainmentManySearch(CommandLinePlugin):
         super().main(args)
 
         moltype = sourmash_args.calculate_moltype(args)
+        if moltype is None: moltype = 'DNA'
+
         return mg_many_search(args.queries, args.against,
                               ksize=args.ksize,
                               moltype=moltype,
@@ -154,6 +158,10 @@ def mgsearch(query_filename, against_list, *,
 
     query_ss = sourmash.load_file_as_index(query_filename)
     query_ss = query_ss.select(ksize=ksize, moltype=moltype)
+    if not query_ss:
+        error(f"ERROR: cannot find query sketch at ksize={ksize}/moltype={moltype}")
+        return -1
+
     query_ss = list(query_ss.signatures())
     if len(query_ss) > 1:
         error(f"ERROR: can only have one query; {len(query_ss)} found.")
@@ -246,6 +254,10 @@ def mg_many_search(query_filenames, against_list, *,
         query_ss = query_ss.select(ksize=ksize, moltype=moltype)
         query_sigs.extend(query_ss.signatures())
 
+    if not query_sigs:
+        error(f"ERROR: cannot find any query sketches at ksize={ksize}/moltype={moltype}")
+        return -1
+
     print(f"Loaded {len(query_sigs)} query signatures.")
 
     # downsample each query sig if necessary.
@@ -336,16 +348,17 @@ def _search_metag(query_ss, metag_filename, ksize, require_abundance, *,
     """
     query_mh = query_ss.minhash
 
-    metag = sourmash.load_file_as_signatures(metag_filename,
-                                             ksize=ksize)
+    metag = sourmash.load_file_as_signatures(metag_filename, ksize=ksize)
     metag = list(metag)
-    assert len(metag) == 1
+    if len(metag) != 1:
+        raise ValueError(f"need one metagenome per file for now; found {len(metag)} in '{metag_filename}'") # @CTB testme
+
     metag = metag[0]
 
     # check to make sure if metag needs & has abundance info
     if require_abundance:
         if not metag.minhash.track_abundance:
-            raise ValueError(f"'{metag_filename}' must have abundance information")
+            raise ValueError(f"sketch in '{metag_filename}' must have abundance information")
 
     has_abundance = False
     if metag.minhash.track_abundance:

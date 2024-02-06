@@ -124,6 +124,37 @@ def test_1_x_0_require_abundance(runtmp):
     assert "must have abundance information" in err
 
 
+def test_1_x_0_fail_ksize(runtmp):
+    # is ksize available?
+    query = utils.get_test_data('1.sig.zip')
+    against = utils.get_test_data('0.sig.zip')
+
+    with pytest.raises(SourmashCommandFailed):
+        runtmp.sourmash('scripts', 'mgsearch', query, against,
+                        '-k', '15', fail_ok=True)
+
+    err = runtmp.last_result.err
+    print(err)
+    assert "ERROR: cannot find query sketch at ksize=15/moltype=DNA" in err
+
+
+def test_mgsearch_1_x_0_fail_ksize(runtmp):
+    # is ksize available?
+    query = utils.get_test_data('1.sig.zip')
+    against = utils.get_test_data('0.sig.zip')
+
+    print((query, against,))
+
+    with pytest.raises(SourmashCommandFailed):
+        runtmp.sourmash('scripts', 'mgmanysearch', '--query', query,
+                        '--against', against,
+                        '-k', '15', fail_ok=True)
+
+    err = runtmp.last_result.err
+    print(err)
+    assert "ERROR: cannot find any query sketches at ksize=15/moltype=DNA" in err
+
+
 def test_1_x_0_no_abund(runtmp):
     # do not require abundance
     query = utils.get_test_data('1.sig.zip')
