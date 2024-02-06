@@ -105,12 +105,12 @@ class Command_ContainmentMultiSearch(CommandLinePlugin):
         super().main(args)
 
         moltype = sourmash_args.calculate_moltype(args)
-        return mgsearch(args.query_genome, args.metagenomes,
-                        ksize=args.ksize,
-                        moltype=moltype,
-                        scaled=args.scaled,
-                        output=args.output,
-                        require_abundance=args.require_abundance)
+        return mg_multi_search(args.queries, args.against,
+                               ksize=args.ksize,
+                               moltype=moltype,
+                               scaled=args.scaled,
+                               output=args.output,
+                               require_abundance=args.require_abundance)
 
 
 def mgsearch(query_filename, against_list, *,
@@ -180,12 +180,14 @@ def mgsearch(query_filename, against_list, *,
     
     for metag_filename in against_list:
         results_d = search_metag(query_ss, metag_filename, ksize,
-                                 require_abundance, screen_width=screen_width)
+                                 require_abundance,
+                                 screen_width=screen_width,
+                                 field_width=41)
 
         name = results_d['display_name']
         del results_d['display_name']
 
-        has_abundance = results_d['average_abund'] is not ''
+        has_abundance = results_d['average_abund'] != ''
 
         # write out CSV
         if out_w:
@@ -223,8 +225,121 @@ def mgsearch(query_filename, against_list, *,
         notify("** Note: N/A in column values indicate metagenomes w/o abundance tracking.")
 
 
+def mg_multi_search(query_filenames, against_list, *,
+                    ksize=31, moltype='DNA', scaled=1000, output=None,
+                    require_abundance=False):
+    screen_width = _get_screen_width()
+
+    query_sigs = []
+    for query_filename in query_filenames:
+        query_ss = sourmash.load_file_as_index(query_filename)
+        query_ss = query_ss.select(ksize=ksize, moltype=moltype)
+        query_sigs.extend(query_ss.signatures())
+
+    print(f"Loaded {len(query_sigs)} query signatures.")
+
+    for query_ss in query_sigs:
+        query_mh = query_ss.minhash
+        if scaled:
+            query_mh = query_mh.downsample(scaled=scaled)
+            query_ss = query_ss.to_mutable()
+            query_ss.minhash = query_mh
+
+    columns = ['intersect_bp',
+               'match_filename',
+               'match_name',
+               'match_md5',
+               'query_filename',
+               'query_name',
+               'query_md5',
+               'ksize',
+               'moltype',
+               'scaled',
+               'f_query',
+               'f_match',
+               'f_match_weighted',
+               'sum_weighted_found',
+               'average_abund',
+               'median_abund',
+               'std_abund',
+               'query_n_hashes',
+               'match_n_hashes',
+               'match_n_weighted_hashes',
+               'jaccard',
+               'genome_containment_ani',
+               'match_containment_ani',
+               'average_containment_ani',
+               'max_containment_ani',
+               'potential_false_negative'
+               ]
+
+    if output:
+        out_fp = open(output, 'w', newline='')
+        out_w = csv.DictWriter(out_fp, fieldnames=columns)
+        out_w.writeheader()
+    else:
+        out_fp = None
+        out_w = None
+
+    # go through metagenomes one by one
+
+    # display stuff
+    first = True
+
+    # missing abundances?
+    missed_abundance = False
+
+    for metag_filename in against_list:
+        for query_ss in query_sigs:
+            results_d = search_metag(query_ss, metag_filename, ksize,
+                                     require_abundance,
+                                     screen_width=screen_width,
+                                     field_width=21)
+
+            name = results_d['display_name']
+            del results_d['display_name']
+
+            has_abundance = results_d['average_abund'] != ''
+
+            # write out CSV
+            if out_w:
+                out_w.writerow(results_d)
+
+            # displaying first result?
+            if first:
+                print("")
+                print("query             p_genome avg_abund   p_metag   metagenome name")
+                print("--------          -------- ---------   -------   ---------------")
+                first = False
+
+            f_genome_found = results_d['f_query']
+            pct_genome = f"{f_genome_found*100:.1f}"
+
+            if has_abundance:
+                f_metag_weighted = results_d['f_match_weighted']
+                pct_metag = f"{f_metag_weighted*100:.1f}%"
+
+                avg_abund = results_d['average_abund']
+                avg_abund = f"{avg_abund:.1f}"
+            else:
+                avg_abund = "N/A"
+                pct_metag = "N/A"
+
+            query_name = query_ss._display_name(17)
+            print(f'{query_name:>17} {pct_genome:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
+
+    # close CSV file
+    if out_fp:
+        out_fp.close()
+
+    # notify user that there were columns that were not filled in
+    if missed_abundance:
+        notify("")
+        notify("** Note: N/A in column values indicate metagenomes w/o abundance tracking.")
+
+
 def search_metag(query_ss, metag_filename, ksize, require_abundance, *,
-                 screen_width=80):
+                 screen_width=80, field_width=41):
     """
     Do the actual search &c for query in a metagenome.
     """
@@ -299,7 +414,7 @@ def search_metag(query_ss, metag_filename, ksize, require_abundance, *,
                      average_containment_ani=result.average_containment_ani,
                      max_containment_ani=result.max_containment_ani,
                      potential_false_negative=result.potential_false_negative,
-                     display_name=metag._display_name(screen_width - 41)
+                     display_name=metag._display_name(screen_width - field_width)
                      )
 
     results_d.update(results_template)
