@@ -67,6 +67,8 @@ class Command_ContainmentSearch(CommandLinePlugin):
         super().main(args)
 
         moltype = sourmash_args.calculate_moltype(args)
+        if moltype is None: moltype = 'DNA'
+
         return mgsearch(args.query_genome, args.metagenomes,
                         ksize=args.ksize,
                         moltype=moltype,
@@ -105,6 +107,8 @@ class Command_ContainmentManySearch(CommandLinePlugin):
         super().main(args)
 
         moltype = sourmash_args.calculate_moltype(args)
+        if moltype is None: moltype = 'DNA'
+
         return mg_many_search(args.queries, args.against,
                               ksize=args.ksize,
                               moltype=moltype,
@@ -154,6 +158,10 @@ def mgsearch(query_filename, against_list, *,
 
     query_ss = sourmash.load_file_as_index(query_filename)
     query_ss = query_ss.select(ksize=ksize, moltype=moltype)
+    if not query_ss:
+        error(f"ERROR: cannot find query sketch at ksize={ksize}/moltype={moltype}")
+        return -1
+
     query_ss = list(query_ss.signatures())
     if len(query_ss) > 1:
         error(f"ERROR: can only have one query; {len(query_ss)} found.")
@@ -245,6 +253,10 @@ def mg_many_search(query_filenames, against_list, *,
         query_ss = sourmash.load_file_as_index(query_filename)
         query_ss = query_ss.select(ksize=ksize, moltype=moltype)
         query_sigs.extend(query_ss.signatures())
+
+    if not query_sigs:
+        error(f"ERROR: cannot find any query sketches at ksize={ksize}/moltype={moltype}")
+        return -1
 
     print(f"Loaded {len(query_sigs)} query signatures.")
 
