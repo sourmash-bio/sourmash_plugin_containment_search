@@ -96,7 +96,7 @@ def test_0_x_podar_out(runtmp):
     assert int(row['sum_weighted_found']) == 2276
     assert int(row['match_n_weighted_hashes']) == 73489
     assert int(row['intersect_bp']) == 4200000
-    assert int(row['match_n_hashes']) == 4200 # @CTB?
+    assert int(row['match_n_hashes']) == 4200
     assert int(row['query_n_hashes']) == 42
 
 
@@ -138,7 +138,7 @@ def test_1_x_0_no_abund(runtmp):
     assert round(float(row['f_match']), 3) == 0.0
     assert int(row['intersect_bp']) == 0
     assert int(row['match_n_hashes']) == 42
-    assert int(row['query_n_hashes']) == 6 # @CTB
+    assert int(row['query_n_hashes']) == 6
 
     assert not row['f_match_weighted']
     assert not row['median_abund']
