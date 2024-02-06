@@ -3,7 +3,7 @@ name = "sourmash_plugin_containment_search"
 description = "sourmash plugin for improved output of containment search for metagenomes"
 readme = "README.md"
 requires-python = ">=3.8"
-version = "0.3.0"
+version = "0.4.0"
 
 dependencies = ["sourmash>=4.8.0,<5", "numpy"]
 
@@ -12,3 +12,4 @@ license = { text = "BSD 3-Clause License" }
 
 [project.entry-points."sourmash.cli_script"]
 containment_search_command = "sourmash_plugin_containment_search:Command_ContainmentSearch"
+containment_manysearch_command = "sourmash_plugin_containment_search:Command_ContainmentManySearch"
