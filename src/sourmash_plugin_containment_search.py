@@ -76,11 +76,11 @@ class Command_ContainmentSearch(CommandLinePlugin):
 
 
 #
-# CLI plugin - supports 'sourmash scripts mgmultisearch'
+# CLI plugin - supports 'sourmash scripts mgmanysearch'
 #
 
-class Command_ContainmentMultiSearch(CommandLinePlugin):
-    command = 'mgmultisearch'             # 'scripts <command>'
+class Command_ContainmentManySearch(CommandLinePlugin):
+    command = 'mgmanysearch'             # 'scripts <command>'
     description = __doc__       # output with -h
     usage = usage               # output with no args/bad args as well as -h
     epilog = epilog             # output with -h
@@ -105,12 +105,12 @@ class Command_ContainmentMultiSearch(CommandLinePlugin):
         super().main(args)
 
         moltype = sourmash_args.calculate_moltype(args)
-        return mg_multi_search(args.queries, args.against,
-                               ksize=args.ksize,
-                               moltype=moltype,
-                               scaled=args.scaled,
-                               output=args.output,
-                               require_abundance=args.require_abundance)
+        return mg_many_search(args.queries, args.against,
+                              ksize=args.ksize,
+                              moltype=moltype,
+                              scaled=args.scaled,
+                              output=args.output,
+                              require_abundance=args.require_abundance)
 
 
 def mgsearch(query_filename, against_list, *,
@@ -225,9 +225,9 @@ def mgsearch(query_filename, against_list, *,
         notify("** Note: N/A in column values indicate metagenomes w/o abundance tracking.")
 
 
-def mg_multi_search(query_filenames, against_list, *,
-                    ksize=31, moltype='DNA', scaled=1000, output=None,
-                    require_abundance=False):
+def mg_many_search(query_filenames, against_list, *,
+                   ksize=31, moltype='DNA', scaled=1000, output=None,
+                   require_abundance=False):
     screen_width = _get_screen_width()
 
     query_sigs = []

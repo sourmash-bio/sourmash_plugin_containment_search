@@ -146,3 +146,16 @@ def test_1_x_0_no_abund(runtmp):
     assert not row['std_abund']
     assert not row['sum_weighted_found']
     assert not row['match_n_weighted_hashes']
+
+
+def test_manysearch_0_x_podar(runtmp):
+    query1 = utils.get_test_data('0.sig.zip')
+    query2 = utils.get_test_data('1.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+    runtmp.sourmash('scripts', 'mgmanysearch', '--queries', query1, query2,
+                    '--against', against)
+    
+    out = runtmp.last_result.out
+    print(out)
+    assert "CP001472.1 Aci...  100.0%    54.2       3.1%     SRR606249" in out
+    assert "CP001941.1 Aci...  100.0%    45.5       0.4%     SRR606249" in out
