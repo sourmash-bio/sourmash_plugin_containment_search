@@ -314,7 +314,7 @@ def mg_many_search(query_filenames, against_list, *,
                 pct_metag = "N/A"
 
             query_name = query_ss._display_name(17)
-            print(f'{query_name:>17} {pct_genome:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
+            print(f'{query_name:<17} {pct_genome:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
 
             # end each query genome
         # end each subject metagenome
@@ -375,14 +375,22 @@ def _search_metag(query_ss, metag_filename, ksize, require_abundance, *,
     if has_abundance:
         # now, get weighted containment for query genome
         intersect_mh = query_mh.intersection(flat_metag) # CTB: redundant?
-        w_intersect_mh = intersect_mh.inflate(metag.minhash)
 
-        abunds = list(w_intersect_mh.hashes.values())
-        mean = np.mean(abunds)
-        median = np.median(abunds)
-        std = np.std(abunds)
-        overlap_sum_abunds = w_intersect_mh.sum_abundances
-        f_sum_abunds = overlap_sum_abunds / total_sum_abunds
+        if len(intersect_mh):
+            w_intersect_mh = intersect_mh.inflate(metag.minhash)
+
+            abunds = list(w_intersect_mh.hashes.values())
+            mean = np.mean(abunds)
+            median = np.median(abunds)
+            std = np.std(abunds)
+            overlap_sum_abunds = w_intersect_mh.sum_abundances
+            f_sum_abunds = overlap_sum_abunds / total_sum_abunds
+        else:
+            mean = 0
+            median = 0
+            std = 0
+            overlap_sum_abunds = 0
+            f_sum_abunds = 0.0
     else:
         mean = median = std = ""
         overlap_sum_abunds = ""
