@@ -162,11 +162,6 @@ Each row contains the following information.
 * `match_n_hashes` - total number of hashes in the metagenome.
 * `match_n_weighted_hashes` - total number of weighted hashes in metagenome.
 
-## TODO
-
-* write tests
-* evaluate whether we should add more columns by looking at prefetch and gather output
-
 ## Support
 
 We suggest filing issues in [the main sourmash issue tracker](https://github.com/dib-lab/sourmash/issues) as that receives more attention!
