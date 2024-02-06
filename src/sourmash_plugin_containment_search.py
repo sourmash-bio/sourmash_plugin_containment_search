@@ -348,16 +348,17 @@ def _search_metag(query_ss, metag_filename, ksize, require_abundance, *,
     """
     query_mh = query_ss.minhash
 
-    metag = sourmash.load_file_as_signatures(metag_filename,
-                                             ksize=ksize)
+    metag = sourmash.load_file_as_signatures(metag_filename, ksize=ksize)
     metag = list(metag)
-    assert len(metag) == 1
+    if len(metag) != 1:
+        raise ValueError(f"need one metagenome per file for now; found {len(metag)} in '{metag_filename}'") # @CTB testme
+
     metag = metag[0]
 
     # check to make sure if metag needs & has abundance info
     if require_abundance:
         if not metag.minhash.track_abundance:
-            raise ValueError(f"'{metag_filename}' must have abundance information")
+            raise ValueError(f"sketch in '{metag_filename}' must have abundance information")
 
     has_abundance = False
     if metag.minhash.track_abundance:
