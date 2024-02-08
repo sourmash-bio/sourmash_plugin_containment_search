@@ -171,7 +171,13 @@ def mgsearch(query_filename, against_list, *,
     print(f"Loaded query signature: {query_ss._display_name(screen_width - 25)}")
 
     query_mh = query_ss.minhash
-    if scaled:
+    if query_mh.track_abundance:
+        notify(f"WARNING: query sketch '{query_ss.name}' has abundance; ignoring.")
+        query_mh = query_mh.flatten()
+        query_ss = query_ss.to_mutable()
+        query_ss.minhash = query_mh
+
+    if scaled and query_mh.scaled != scaled:
         query_mh = query_mh.downsample(scaled=scaled)
         query_ss = query_ss.to_mutable()
         query_ss.minhash = query_mh
@@ -260,13 +266,27 @@ def mg_many_search(query_filenames, against_list, *,
 
     print(f"Loaded {len(query_sigs)} query signatures.")
 
-    # downsample each query sig if necessary.
+    # flatten and downsample each query sig if necessary.
+    new_query_sigs = []
     for query_ss in query_sigs:
         query_mh = query_ss.minhash
-        if scaled is not None and scaled != query_mh.scaled:
+
+        # replace with flattened query
+        if query_mh.track_abundance:
+            query_ss = query_ss.to_mutable()
+            notify(f"WARNING: query sketch '{query_ss.name}' has abundance; ignoring.")
+            query_mh = query_mh.flatten()
+            query_ss.minhash = query_mh
+
+        # replace with downsampled query
+        if scaled is not None and scaled != query_mh.scaled: # @CTB test
             query_mh = query_mh.downsample(scaled=scaled)
             query_ss = query_ss.to_mutable()
             query_ss.minhash = query_mh
+
+        new_query_sigs.append(query_ss)
+
+    query_sigs = new_query_sigs
 
     # prepare output
     if output:
