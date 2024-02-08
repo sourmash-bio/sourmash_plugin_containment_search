@@ -41,6 +41,29 @@ def test_0_x_podar(runtmp):
     assert "100.0%    54.2       3.1%     SRR606249" in out
 
 
+def test_podar_x_0_flatten_query(runtmp):
+    query = utils.get_test_data('SRR606249.k31.sig.zip')
+    against = utils.get_test_data('0.sig.zip')
+    runtmp.sourmash('scripts', 'mgsearch', query, against)
+
+    out = runtmp.last_result.out
+    print(out)
+    assert 0
+
+
+def test_mgsearch_podar_x_0_flatten_query(runtmp):
+    query = utils.get_test_data('SRR606249.k31.sig.zip')
+    against = utils.get_test_data('0.sig.zip')
+    runtmp.sourmash('scripts', 'mgmanysearch', '--queries', query,
+                    '--against', against)
+
+    out = runtmp.last_result.out
+    print(out)
+    err = runtmp.last_result.err
+    print(err)
+    assert 0
+
+
 def test_0_x_podar_out(runtmp):
     query = utils.get_test_data('0.sig.zip')
     against = utils.get_test_data('SRR606249.k31.sig.zip')
