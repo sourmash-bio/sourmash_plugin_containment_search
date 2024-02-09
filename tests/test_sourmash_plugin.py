@@ -41,6 +41,49 @@ def test_0_x_podar(runtmp):
     assert "100.0%    54.2       3.1%     SRR606249" in out
 
 
+def test_0_x_podar_scaled(runtmp):
+    # test with --scaled
+    query = utils.get_test_data('0.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+    runtmp.sourmash('scripts', 'mgsearch', query, against,
+                    '--scaled', '200000')
+    
+    out = runtmp.last_result.out
+    assert "100.0%    54.2       3.1%     SRR606249" in out
+
+
+def test_0_x_podar_scaled_change_query(runtmp):
+    # test with mismatched scaled / query
+    query = utils.get_test_data('0.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+
+    # change scaled of query
+    query_down = runtmp.output('new.sig.gz')
+    runtmp.sourmash('sig', 'downsample', '--scaled', '200000', query,
+                    '-o', query_down)
+    
+    runtmp.sourmash('scripts', 'mgsearch', query_down, against)
+    
+    out = runtmp.last_result.out
+    assert "100.0%    54.2       3.1%     SRR606249" in out
+
+
+def test_0_x_podar_scaled_change_against(runtmp):
+    # test with mismatched scaled / against
+    query = utils.get_test_data('0.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+
+    # change scaled of against
+    against_down = runtmp.output('new.sig.gz')
+    runtmp.sourmash('sig', 'downsample', '--scaled', '200000', against,
+                    '-o', against_down)
+    
+    runtmp.sourmash('scripts', 'mgsearch', query, against_down)
+    
+    out = runtmp.last_result.out
+    assert "100.0%    54.2       3.1%     SRR606249" in out
+
+
 def test_podar_x_0_flatten_query(runtmp):
     query = utils.get_test_data('SRR606249.k31.sig.zip')
     against = utils.get_test_data('0.sig.zip')
