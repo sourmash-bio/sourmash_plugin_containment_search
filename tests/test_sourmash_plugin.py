@@ -41,6 +41,65 @@ def test_0_x_podar(runtmp):
     assert "100.0%    54.2       3.1%     SRR606249" in out
 
 
+def test_0_x_podar_scaled(runtmp):
+    # test with --scaled
+    query = utils.get_test_data('0.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+    runtmp.sourmash('scripts', 'mgsearch', query, against,
+                    '--scaled', '200000')
+    
+    out = runtmp.last_result.out
+    assert "100.0%    54.2       3.1%     SRR606249" in out
+
+
+def test_0_x_podar_scaled(runtmp):
+    # test with --scaled upsampling (should fail)
+    query = utils.get_test_data('0.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+    with pytest.raises(SourmashCommandFailed):
+        runtmp.sourmash('scripts', 'mgsearch', query, against,
+                        '--scaled', '50000', fail_ok=True)
+
+    err = runtmp.last_result.err
+    assert "ERROR: cannot downsample query" in err
+
+
+def test_0_x_podar_scaled_change_query(runtmp):
+    # test with mismatched scaled / query
+    query = utils.get_test_data('0.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+
+    # change scaled of query
+    query_down = runtmp.output('new.sig.gz')
+    runtmp.sourmash('sig', 'downsample', '--scaled', '200000', query,
+                    '-o', query_down)
+
+    with pytest.raises(SourmashCommandFailed):
+        runtmp.sourmash('scripts', 'mgsearch', query_down, against,
+                        fail_ok=True)
+
+    err = runtmp.last_result.err
+    assert "Unable to run comparison for" in err
+
+
+def test_0_x_podar_scaled_change_against(runtmp):
+    # test with mismatched scaled / against
+    query = utils.get_test_data('0.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+
+    # change scaled of against
+    against_down = runtmp.output('new.sig.gz')
+    runtmp.sourmash('sig', 'downsample', '--scaled', '200000', against,
+                    '-o', against_down)
+
+    with pytest.raises(SourmashCommandFailed):
+        runtmp.sourmash('scripts', 'mgsearch', query, against_down,
+                        fail_ok=True)
+
+    err = runtmp.last_result.err
+    assert "Unable to run comparison for" in err
+
+
 def test_podar_x_0_flatten_query(runtmp):
     query = utils.get_test_data('SRR606249.k31.sig.zip')
     against = utils.get_test_data('0.sig.zip')
@@ -235,3 +294,66 @@ def test_manysearch_0_x_podar(runtmp):
     print(out)
     assert "CP001472.1 Aci...  100.0%    54.2       3.1%     SRR606249" in out
     assert "CP001941.1 Aci...  100.0%    45.5       0.4%     SRR606249" in out
+
+
+def test_manysearch_0_x_podar_scaled(runtmp):
+    # test with --scaled
+    query = utils.get_test_data('0.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+    runtmp.sourmash('scripts', 'mgmanysearch', '--query', query,
+                    '--agains', against,
+                    '--scaled', '200000')
+
+    out = runtmp.last_result.out
+    assert "100.0%    54.2       3.1%     SRR606249" in out
+
+
+def test_manysearch_0_x_podar_scaled(runtmp):
+    # test with --scaled upsampling (should fail)
+    query = utils.get_test_data('0.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+    with pytest.raises(SourmashCommandFailed):
+        runtmp.sourmash('scripts', 'mgmanysearch',
+                        '--query', query, '--against', against,
+                        '--scaled', '50000', fail_ok=True)
+
+    err = runtmp.last_result.err
+    assert "ERROR: cannot downsample query" in err
+
+
+def test_manysearch_0_x_podar_scaled_change_query(runtmp):
+    # test with mismatched scaled / query
+    query = utils.get_test_data('0.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+
+    # change scaled of query
+    query_down = runtmp.output('new.sig.gz')
+    runtmp.sourmash('sig', 'downsample', '--scaled', '200000', query,
+                    '-o', query_down)
+
+    with pytest.raises(SourmashCommandFailed):
+        runtmp.sourmash('scripts', 'mgmanysearch', '--query', query_down,
+                        '--against', against,
+                        fail_ok=True)
+
+    err = runtmp.last_result.err
+    assert "Unable to run comparison for" in err
+
+
+def test_manysearch_0_x_podar_scaled_change_against(runtmp):
+    # test with mismatched scaled / against
+    query = utils.get_test_data('0.sig.zip')
+    against = utils.get_test_data('SRR606249.k31.sig.zip')
+
+    # change scaled of against
+    against_down = runtmp.output('new.sig.gz')
+    runtmp.sourmash('sig', 'downsample', '--scaled', '200000', against,
+                    '-o', against_down)
+
+    with pytest.raises(SourmashCommandFailed):
+        runtmp.sourmash('scripts', 'mgmanysearch', '--query', query,
+                        '--against', against_down,
+                        fail_ok=True)
+
+    err = runtmp.last_result.err
+    assert "Unable to run comparison for" in err

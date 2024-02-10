@@ -37,6 +37,10 @@ def _get_screen_width():
 
     return col
 
+
+class MismatchScaled(ValueError):
+    pass
+
 #
 # CLI plugin - supports 'sourmash scripts mgsearch'
 #
@@ -157,7 +161,7 @@ def mgsearch(query_filename, against_list, *,
     screen_width = _get_screen_width()
 
     query_ss = sourmash.load_file_as_index(query_filename)
-    query_ss = query_ss.select(ksize=ksize, moltype=moltype)
+    query_ss = query_ss.select(ksize=ksize, moltype=moltype, scaled=scaled)
     if not query_ss:
         error(f"ERROR: cannot find query sketch at ksize={ksize}/moltype={moltype}")
         return -1
@@ -178,7 +182,11 @@ def mgsearch(query_filename, against_list, *,
         query_ss.minhash = query_mh
 
     if scaled and query_mh.scaled != scaled:
-        query_mh = query_mh.downsample(scaled=scaled)
+        try:
+            query_mh = query_mh.downsample(scaled=scaled)
+        except ValueError:
+            notify(f"ERROR: cannot downsample query '{query_ss.name}' to {scaled}")
+            return -1
         query_ss = query_ss.to_mutable()
         query_ss.minhash = query_mh
 
@@ -199,10 +207,15 @@ def mgsearch(query_filename, against_list, *,
     missed_abundance = False
     
     for metag_filename in against_list:
-        results_d = _search_metag(query_ss, metag_filename, ksize,
-                                  require_abundance,
-                                  screen_width=screen_width,
-                                  field_width=41)
+        try:
+            results_d = _search_metag(query_ss, metag_filename,
+                                      ksize=ksize, scaled=scaled,
+                                      require_abundance=require_abundance,
+                                      screen_width=screen_width,
+                                      field_width=41)
+        except MismatchScaled:
+            error(f"Unable to run comparison for '{query_ss.name}'; maybe set --scaled?")
+            return -1
 
         name = results_d['display_name']
         del results_d['display_name']
@@ -279,8 +292,12 @@ def mg_many_search(query_filenames, against_list, *,
             query_ss.minhash = query_mh
 
         # replace with downsampled query
-        if scaled is not None and scaled != query_mh.scaled: # @CTB test
-            query_mh = query_mh.downsample(scaled=scaled)
+        if scaled is not None and scaled != query_mh.scaled:
+            try:
+                query_mh = query_mh.downsample(scaled=scaled)
+            except ValueError:
+                notify(f"ERROR: cannot downsample query '{query_ss.name}' to {scaled}")
+                return -1
             query_ss = query_ss.to_mutable()
             query_ss.minhash = query_mh
 
@@ -307,10 +324,15 @@ def mg_many_search(query_filenames, against_list, *,
     for metag_filename in against_list:
         # for each metagenome, iterate over query sigs
         for query_ss in query_sigs:
-            results_d = _search_metag(query_ss, metag_filename, ksize,
-                                      require_abundance,
-                                      screen_width=screen_width,
-                                      field_width=21)
+            try:
+                results_d = _search_metag(query_ss, metag_filename,
+                                          ksize=ksize, scaled=scaled,
+                                          require_abundance=require_abundance,
+                                          screen_width=screen_width,
+                                          field_width=21)
+            except MismatchScaled:
+                error(f"Unable to run comparison for '{query_ss.name}'; maybe set --scaled?")
+                return -1
 
             name = results_d['display_name']
             del results_d['display_name']
@@ -361,8 +383,9 @@ def mg_many_search(query_filenames, against_list, *,
         notify("** Note: N/A in column values indicate metagenomes w/o abundance tracking.")
 
 
-def _search_metag(query_ss, metag_filename, ksize, require_abundance, *,
-                 screen_width=80, field_width=41):
+def _search_metag(query_ss, metag_filename, *, ksize=None, scaled=None,
+                  require_abundance=None,
+                  screen_width=80, field_width=41):
     """
     Do the actual search &c for query in a metagenome.
     """
@@ -386,6 +409,10 @@ def _search_metag(query_ss, metag_filename, ksize, require_abundance, *,
     else:
         missed_abundance = True
 
+    if scaled and metag.minhash.scaled != scaled:
+        metag = metag.to_mutable()
+        metag.minhash = metag.minhash.downsample(scaled=scaled)
+
     # calculate stuff!
     result = PrefetchResult(query_ss, metag, threshold_bp=0,
                              estimate_ani_ci=False)
@@ -407,7 +434,10 @@ def _search_metag(query_ss, metag_filename, ksize, require_abundance, *,
     # this is where we depart from PrefetchResult :)
     if has_abundance:
         # now, get weighted containment for query genome
-        intersect_mh = query_mh.intersection(flat_metag) # CTB: redundant?
+        try:
+            intersect_mh = query_mh.intersection(flat_metag) # CTB: redundant?
+        except ValueError:
+            raise MismatchScaled
 
         if len(intersect_mh):
             w_intersect_mh = intersect_mh.inflate(metag.minhash)
