@@ -292,8 +292,12 @@ def mg_many_search(query_filenames, against_list, *,
             query_ss.minhash = query_mh
 
         # replace with downsampled query
-        if scaled is not None and scaled != query_mh.scaled: # @CTB test
-            query_mh = query_mh.downsample(scaled=scaled)
+        if scaled is not None and scaled != query_mh.scaled:
+            try:
+                query_mh = query_mh.downsample(scaled=scaled)
+            except ValueError:
+                notify(f"ERROR: cannot downsample query '{query_ss.name}' to {scaled}")
+                return -1
             query_ss = query_ss.to_mutable()
             query_ss.minhash = query_mh
 
