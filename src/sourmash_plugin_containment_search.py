@@ -213,6 +213,7 @@ def mgsearch(query_filename, against_list, *,
                                       require_abundance=require_abundance,
                                       screen_width=screen_width,
                                       field_width=41)
+            results_d = list(results_d)[0]
         except MismatchScaled:
             error(f"Unable to run comparison for '{query_ss.name}'; maybe set --scaled?")
             return -1
@@ -325,51 +326,50 @@ def mg_many_search(query_filenames, against_list, *,
         # for each metagenome, iterate over query sigs
         for query_ss in query_sigs:
             try:
-                results_d = _search_metag(query_ss, metag_filename,
-                                          ksize=ksize, scaled=scaled,
-                                          require_abundance=require_abundance,
-                                          screen_width=screen_width,
-                                          field_width=21)
+                for results_d in _search_metag(query_ss, metag_filename,
+                                               ksize=ksize, scaled=scaled,
+                                               require_abundance=require_abundance,
+                                               screen_width=screen_width,
+                                               field_width=21):
+                    name = results_d['display_name']
+                    del results_d['display_name']
+
+                    has_abundance = results_d['average_abund'] != ''
+
+                    # write out CSV
+                    if out_w:
+                        out_w.writerow(results_d)
+
+                    #
+                    # display!
+                    #
+
+                    # displaying first result?
+                    if first:
+                        print("")
+                        print("query             p_genome avg_abund   p_metag   metagenome name")
+                        print("--------          -------- ---------   -------   ---------------")
+                        first = False
+
+                    f_genome_found = results_d['f_query']
+                    pct_genome = f"{f_genome_found*100:.1f}"
+
+                    if has_abundance:
+                        f_metag_weighted = results_d['f_match_weighted']
+                        pct_metag = f"{f_metag_weighted*100:.1f}%"
+
+                        avg_abund = results_d['average_abund']
+                        avg_abund = f"{avg_abund:.1f}"
+                    else:
+                        avg_abund = "N/A"
+                        pct_metag = "N/A"
+
+                    query_name = query_ss._display_name(17)
+                    print(f'{query_name:<17} {pct_genome:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
+
             except MismatchScaled:
                 error(f"Unable to run comparison for '{query_ss.name}'; maybe set --scaled?")
                 return -1
-
-            name = results_d['display_name']
-            del results_d['display_name']
-
-            has_abundance = results_d['average_abund'] != ''
-
-            # write out CSV
-            if out_w:
-                out_w.writerow(results_d)
-
-            #
-            # display!
-            #
-
-            # displaying first result?
-            if first:
-                print("")
-                print("query             p_genome avg_abund   p_metag   metagenome name")
-                print("--------          -------- ---------   -------   ---------------")
-                first = False
-
-            f_genome_found = results_d['f_query']
-            pct_genome = f"{f_genome_found*100:.1f}"
-
-            if has_abundance:
-                f_metag_weighted = results_d['f_match_weighted']
-                pct_metag = f"{f_metag_weighted*100:.1f}%"
-
-                avg_abund = results_d['average_abund']
-                avg_abund = f"{avg_abund:.1f}"
-            else:
-                avg_abund = "N/A"
-                pct_metag = "N/A"
-
-            query_name = query_ss._display_name(17)
-            print(f'{query_name:<17} {pct_genome:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
-
             # end each query genome
         # end each subject metagenome
 
@@ -391,98 +391,92 @@ def _search_metag(query_ss, metag_filename, *, ksize=None, scaled=None,
     """
     query_mh = query_ss.minhash
 
-    metag = sourmash.load_file_as_signatures(metag_filename, ksize=ksize)
-    metag = list(metag)
-    if len(metag) != 1:
-        raise ValueError(f"need one metagenome per file for now; found {len(metag)} in '{metag_filename}'") # @CTB testme
+    metags = sourmash.load_file_as_signatures(metag_filename, ksize=ksize)
+    for metag in metags:
+        # check to make sure if metag needs & has abundance info
+        if require_abundance:
+            if not metag.minhash.track_abundance:
+                raise ValueError(f"sketch in '{metag_filename}' must have abundance information")
 
-    metag = metag[0]
-
-    # check to make sure if metag needs & has abundance info
-    if require_abundance:
-        if not metag.minhash.track_abundance:
-            raise ValueError(f"sketch in '{metag_filename}' must have abundance information")
-
-    has_abundance = False
-    if metag.minhash.track_abundance:
-        has_abundance = True
-    else:
-        missed_abundance = True
-
-    if scaled and metag.minhash.scaled != scaled:
-        metag = metag.to_mutable()
-        metag.minhash = metag.minhash.downsample(scaled=scaled)
-
-    # calculate stuff!
-    result = PrefetchResult(query_ss, metag, threshold_bp=0,
-                             estimate_ani_ci=False)
-
-    # calculate total weighted hashes for use in denominator:
-    total_sum_abunds = metag.minhash.sum_abundances
-
-    # get a flattened copy for use in intersections...
-    flat_metag = metag.minhash.flatten()
-
-    # other info!
-    results_template = dict(match_md5=metag.md5sum(),
-                            match_name=metag.name,
-                            match_filename=metag_filename,
-                            ksize=ksize,
-                            moltype=metag.minhash.moltype,
-                            scaled=metag.minhash.scaled)
-
-    # this is where we depart from PrefetchResult :)
-    if has_abundance:
-        # now, get weighted containment for query genome
-        try:
-            intersect_mh = query_mh.intersection(flat_metag) # CTB: redundant?
-        except ValueError:
-            raise MismatchScaled
-
-        if len(intersect_mh):
-            w_intersect_mh = intersect_mh.inflate(metag.minhash)
-
-            abunds = list(w_intersect_mh.hashes.values())
-            mean = np.mean(abunds)
-            median = np.median(abunds)
-            std = np.std(abunds)
-            overlap_sum_abunds = w_intersect_mh.sum_abundances
-            f_sum_abunds = overlap_sum_abunds / total_sum_abunds
+        has_abundance = False
+        if metag.minhash.track_abundance:
+            has_abundance = True
         else:
-            mean = 0
-            median = 0
-            std = 0
-            overlap_sum_abunds = 0
-            f_sum_abunds = 0.0
-    else:
-        mean = median = std = ""
-        overlap_sum_abunds = ""
-        f_sum_abunds = ""
+            missed_abundance = True
 
-    # calculate final results
-    results_d = dict(intersect_bp=result.intersect_bp,
-                     query_filename=query_ss.filename,
-                     query_name=query_ss.name,
-                     query_md5=query_ss.md5sum(),
-                     f_query=result.f_match_query,
-                     f_match=result.f_query_match,
-                     f_match_weighted=f_sum_abunds,
-                     sum_weighted_found=overlap_sum_abunds,
-                     query_n_hashes=len(query_mh),
-                     match_n_hashes=len(flat_metag),
-                     match_n_weighted_hashes=total_sum_abunds,
-                     average_abund=mean,
-                     median_abund=median,
-                     std_abund=std,
-                     jaccard=result.jaccard,
-                     genome_containment_ani=result.query_containment_ani,
-                     match_containment_ani=result.match_containment_ani,
-                     average_containment_ani=result.average_containment_ani,
-                     max_containment_ani=result.max_containment_ani,
-                     potential_false_negative=result.potential_false_negative,
-                     display_name=metag._display_name(screen_width - field_width)
-                     )
+        if scaled and metag.minhash.scaled != scaled:
+            metag = metag.to_mutable()
+            metag.minhash = metag.minhash.downsample(scaled=scaled)
 
-    results_d.update(results_template)
+        # calculate stuff!
+        result = PrefetchResult(query_ss, metag, threshold_bp=0,
+                                 estimate_ani_ci=False)
 
-    return results_d
+        # calculate total weighted hashes for use in denominator:
+        total_sum_abunds = metag.minhash.sum_abundances
+
+        # get a flattened copy for use in intersections...
+        flat_metag = metag.minhash.flatten()
+
+        # other info!
+        results_template = dict(match_md5=metag.md5sum(),
+                                match_name=metag.name,
+                                match_filename=metag_filename,
+                                ksize=ksize,
+                                moltype=metag.minhash.moltype,
+                                scaled=metag.minhash.scaled)
+
+        # this is where we depart from PrefetchResult :)
+        if has_abundance:
+            # now, get weighted containment for query genome
+            try:
+                intersect_mh = query_mh.intersection(flat_metag) # CTB: redundant?
+            except ValueError:
+                raise MismatchScaled
+
+            if len(intersect_mh):
+                w_intersect_mh = intersect_mh.inflate(metag.minhash)
+
+                abunds = list(w_intersect_mh.hashes.values())
+                mean = np.mean(abunds)
+                median = np.median(abunds)
+                std = np.std(abunds)
+                overlap_sum_abunds = w_intersect_mh.sum_abundances
+                f_sum_abunds = overlap_sum_abunds / total_sum_abunds
+            else:
+                mean = 0
+                median = 0
+                std = 0
+                overlap_sum_abunds = 0
+                f_sum_abunds = 0.0
+        else:
+            mean = median = std = ""
+            overlap_sum_abunds = ""
+            f_sum_abunds = ""
+
+        # calculate final results
+        results_d = dict(intersect_bp=result.intersect_bp,
+                         query_filename=query_ss.filename,
+                         query_name=query_ss.name,
+                         query_md5=query_ss.md5sum(),
+                         f_query=result.f_match_query,
+                         f_match=result.f_query_match,
+                         f_match_weighted=f_sum_abunds,
+                         sum_weighted_found=overlap_sum_abunds,
+                         query_n_hashes=len(query_mh),
+                         match_n_hashes=len(flat_metag),
+                         match_n_weighted_hashes=total_sum_abunds,
+                         average_abund=mean,
+                         median_abund=median,
+                         std_abund=std,
+                         jaccard=result.jaccard,
+                         genome_containment_ani=result.query_containment_ani,
+                         match_containment_ani=result.match_containment_ani,
+                         average_containment_ani=result.average_containment_ani,
+                         max_containment_ani=result.max_containment_ani,
+                         potential_false_negative=result.potential_false_negative,
+                         display_name=metag._display_name(screen_width - field_width)
+                         )
+
+        results_d.update(results_template)
+        yield results_d
