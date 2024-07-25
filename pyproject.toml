@@ -3,7 +3,7 @@ name = "sourmash_plugin_containment_search"
 description = "sourmash plugin for improved output of containment search for metagenomes"
 readme = "README.md"
 requires-python = ">=3.8"
-version = "0.4.3"
+version = "0.4.4"
 
 dependencies = ["sourmash>=4.8.0,<5", "numpy"]
 
