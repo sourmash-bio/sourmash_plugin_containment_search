@@ -62,6 +62,10 @@ class Command_ContainmentSearch(CommandLinePlugin):
                                help='output CSV')
         subparser.add_argument('--require-abundance', action="store_true",
                                help='require that metagenomes be sketched with abundance')
+        subparser.add_argument('--detection', action="store_true",
+                               default=True)
+        subparser.add_argument('--ani', dest='detection',
+                               action="store_false")
 
         add_ksize_arg(subparser, default=31)
         add_moltype_args(subparser)
@@ -78,7 +82,8 @@ class Command_ContainmentSearch(CommandLinePlugin):
                         moltype=moltype,
                         scaled=args.scaled,
                         output=args.output,
-                        require_abundance=args.require_abundance)
+                        require_abundance=args.require_abundance,
+                        output_ani=not args.detection)
 
 
 #
@@ -102,6 +107,10 @@ class Command_ContainmentManySearch(CommandLinePlugin):
                                help='output CSV')
         subparser.add_argument('--require-abundance', action="store_true",
                                help='require that metagenomes be sketched with abundance')
+        subparser.add_argument('--detection', action="store_true",
+                               default=True)
+        subparser.add_argument('--ani', dest='detection',
+                               action="store_false")
 
         add_ksize_arg(subparser, default=31)
         add_moltype_args(subparser)
@@ -118,7 +127,8 @@ class Command_ContainmentManySearch(CommandLinePlugin):
                               moltype=moltype,
                               scaled=args.scaled,
                               output=args.output,
-                              require_abundance=args.require_abundance)
+                              require_abundance=args.require_abundance,
+                              output_ani=not args.detection)
 
 
 ## Implementation!
@@ -154,7 +164,7 @@ COLUMNS = ['intersect_bp',
 
 def mgsearch(query_filename, against_list, *,
              ksize=31, moltype='DNA', scaled=1000, output=None,
-             require_abundance=False):
+             require_abundance=False, output_ani=False):
     """
     Search for a single genome in many metagenomes.
     """
@@ -230,12 +240,20 @@ def mgsearch(query_filename, against_list, *,
         # displaying first result?
         if first:
             print("")
-            print("p_genome avg_abund   p_metag   metagenome name")
-            print("-------- ---------   -------   ---------------")
+            if output_ani:
+                print("  ANI    avg_abund   p_metag   metagenome name")
+                print("-------- ---------   -------   ---------------")
+            else:
+                print("p_genome avg_abund   p_metag   metagenome name")
+                print("-------- ---------   -------   ---------------")
             first = False
 
-        f_genome_found = results_d['f_query']
-        pct_genome = f"{f_genome_found*100:.1f}"
+        if output_ani:
+            ani = results_d['genome_containment_ani']
+            display_ani = f"{ani*100:.1f}"
+        else:
+            f_genome_found = results_d['f_query']
+            pct_genome = f"{f_genome_found*100:.1f}"
 
         if has_abundance:
             f_metag_weighted = results_d['f_match_weighted']
@@ -247,7 +265,10 @@ def mgsearch(query_filename, against_list, *,
             avg_abund = "N/A"
             pct_metag = "N/A"
 
-        print(f'{pct_genome:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
+        if output_ani:
+            print(f'{display_ani:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
+        else:
+            print(f'{pct_genome:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
 
     # close CSV file
     if out_fp:
@@ -261,7 +282,7 @@ def mgsearch(query_filename, against_list, *,
 
 def mg_many_search(query_filenames, against_list, *,
                    ksize=31, moltype='DNA', scaled=1000, output=None,
-                   require_abundance=False):
+                   require_abundance=False, output_ani=False):
     """
     Search multiple genomes in many metagenomes, loading each metagenome
     once.
@@ -347,12 +368,20 @@ def mg_many_search(query_filenames, against_list, *,
                     # displaying first result?
                     if first:
                         print("")
-                        print("query             p_genome avg_abund   p_metag   metagenome name")
-                        print("--------          -------- ---------   -------   ---------------")
+                        if output_ani:
+                            print("query               ANI    avg_abund   p_metag   metagenome name")
+                            print("--------          -------- ---------   -------   ---------------")
+                        else:
+                            print("query             p_genome avg_abund   p_metag   metagenome name")
+                            print("--------          -------- ---------   -------   ---------------")
                         first = False
 
-                    f_genome_found = results_d['f_query']
-                    pct_genome = f"{f_genome_found*100:.1f}"
+                    if output_ani:
+                        ani = results_d['genome_containment_ani']
+                        display_ani = f"{ani*100:.1f}"
+                    else:
+                        f_genome_found = results_d['f_query']
+                        pct_genome = f"{f_genome_found*100:.1f}"
 
                     if has_abundance:
                         f_metag_weighted = results_d['f_match_weighted']
@@ -365,7 +394,10 @@ def mg_many_search(query_filenames, against_list, *,
                         pct_metag = "N/A"
 
                     query_name = query_ss._display_name(17)
-                    print(f'{query_name:<17} {pct_genome:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
+                    if output_ani:
+                        print(f'{query_name:<17} {display_ani:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
+                    else:
+                        print(f'{query_name:<17} {pct_genome:>6}%  {avg_abund:>6}     {pct_metag:>6}     {name}')
 
             except MismatchScaled:
                 error(f"Unable to run comparison for '{query_ss.name}'; maybe set --scaled?")
