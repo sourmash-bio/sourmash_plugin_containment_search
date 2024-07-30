@@ -100,17 +100,18 @@ class Command_ContainmentManySearch(CommandLinePlugin):
     def __init__(self, subparser):
         super().__init__(subparser)
         subparser.add_argument('--queries', '--query', nargs='+',
-                               help='sketches to look for')
+                               help='sketches to look for in metagenomes', required=True)
         subparser.add_argument('--against', '--db', '--metagenomes', nargs='+',
-                               help='metagenomes to search')
+                               help='metagenomes to search with queries', required=True)
         subparser.add_argument('-o', '--output', default=None,
                                help='output CSV')
         subparser.add_argument('--require-abundance', action="store_true",
                                help='require that metagenomes be sketched with abundance')
         subparser.add_argument('--detection', action="store_true",
-                               default=True)
+                               default=True, help="output fraction of query detected, instead of ANI; see --ani. Default.")
         subparser.add_argument('--ani', dest='detection',
-                               action="store_false")
+                               action="store_false",
+                               help="output estimated ANI, instead of fraction of query detected; see --detection")
 
         add_ksize_arg(subparser, default=31)
         add_moltype_args(subparser)
