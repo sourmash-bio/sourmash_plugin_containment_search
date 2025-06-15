@@ -1,5 +1,18 @@
 # sourmash_plugin_containment_search: improved containment search for genomes in metagenomes
 
+AS OF JUNE 2025:
+
+THIS PLUGIN IS NOW DEPRECATED; IF YOU INSTALL THE LATEST VERSION IT WILL
+REMOVE THE PLUGIN HOOKS.
+
+People intersted in this functionality should use the `manysearch`
+command from
+[the branchwater plugin](https://github.com/sourmash-bio/sourmash_plugin_branchwater);
+please see https://github.com/sourmash-bio/sourmash/issues/3540 for
+more information.
+
+---
+
 This plugin provides two commands `sourmash scripts mgsearch` and
 `sourmash scripts mgmanysearch`, that provide new & nicer outputs for
 searching for genomes in metagenomes.  It is a plugin for [the sourmash

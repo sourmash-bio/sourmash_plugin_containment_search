@@ -1,3 +1,5 @@
+.PHONY: dist all test install
+
 all: test
 
 test: 
@@ -8,3 +10,6 @@ install-dev:
 
 install:
 	python -m pip install .
+
+dist:
+	python -m build
