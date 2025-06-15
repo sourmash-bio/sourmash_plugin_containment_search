@@ -5,7 +5,7 @@ AS OF JUNE 2025:
 THIS PLUGIN IS NOW DEPRECATED; IF YOU INSTALL THE LATEST VERSION IT WILL
 REMOVE THE PLUGIN HOOKS.
 
-People intersted in this functionality should use the `manysearch`
+People interested in this functionality should use the `manysearch`
 command from
 [the branchwater plugin](https://github.com/sourmash-bio/sourmash_plugin_branchwater);
 please see https://github.com/sourmash-bio/sourmash/issues/3540 for
